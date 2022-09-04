@@ -76,16 +76,19 @@ class MarndAgent(nn.Module):
         target_novelty = self.local_novelty_target(x)
         predict_novelty = self.local_novelty_predict(x)
 
-        # local_novelty_predict loss
-        novelty_loss = nn.functional.mse_loss(predict_novelty, target_novelty, reduction='none').mean(dim=-1)
+        # local_novelty_predict loss, update independently
+        novelty_loss = nn.functional.mse_loss(predict_novelty, target_novelty)
+
         # local_novelty
-        novelty = ((target_novelty - predict_novelty).pow(2).sum(1) / 2).data.cpu().numpy()
+        novelty_q = nn.functional.mse_loss(predict_novelty, target_novelty, reduction='none')
+
+        agents_out = local_q + novelty_q
         print("************local q and novelty************")
         print(local_q, local_q.shape)
         print(novelty_loss, novelty_loss.shape)
-        print(novelty, novelty.shape)
+        print(agents_out, agents_out.shape)
         print("******************************************")
-        return local_q, h_out, novelty_loss, novelty
+        return agents_out, h_out, novelty_loss
 
     def init_hidden(self):
         # trick, create hidden state on same device
