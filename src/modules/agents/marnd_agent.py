@@ -82,6 +82,7 @@ class MarndAgent(nn.Module):
         # local_novelty
         novelty_q = nn.functional.mse_loss(predict_novelty, target_novelty, reduction='none')
 
+        # a = Q_local_1 + Q_local_2
         agents_out = local_q + novelty_q
         print("************local q and novelty************")
         print(local_q, local_q.shape)

@@ -33,10 +33,10 @@ class MarndMAC:
         return agents_out(local_q)
         """
         agent_inputs = self._build_inputs(ep_batch, t)
-        agents_out, self.hidden_states, novelty_loss, novelty = self.agent(agent_inputs, self.hidden_states)
+        agents_out, self.hidden_states, novelty_loss = self.agent(agent_inputs, self.hidden_states)
 
         if train_mode:
-            return agents_out, novelty_loss, novelty
+            return agents_out, novelty_loss
         else:
             return agents_out
 
