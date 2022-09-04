@@ -23,7 +23,8 @@ class MarndAgent(nn.Module):
 
         # local novelty modula
         print("********input dim*******")
-        print(input_dim)
+        print("input dim", input_dim)
+        print("n_actions", args.n_actions)
         print("************************")
         # local novelty target net
         # using for set an anchor for calculating the novelty of local observation

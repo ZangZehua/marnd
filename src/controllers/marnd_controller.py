@@ -9,6 +9,9 @@ import logging
 class MarndMAC:
     def __init__(self, scheme, groups, args):
         self.n_agents = args.n_agents
+        print("********n_agents**********")
+        print("n_agents", self.n_agents)
+        print("**************************")
         self.args = args
         input_shape = self._get_input_shape(scheme)
         self._build_agents(input_shape, scheme)
