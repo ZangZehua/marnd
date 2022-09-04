@@ -78,7 +78,7 @@ class MarndAgent(nn.Module):
 
         # local_novelty_predict loss
         novelty_loss = nn.functional.mse_loss(predict_novelty, target_novelty)
-        intrinsic_reward = (target_novelty - predict_novelty).pow(2).sum(1) / 2
+        intrinsic_reward = torch.hstack((target_novelty - predict_novelty).pow(2).sum(1) / 2)
         # local_novelty
         novelty = novelty_loss.mean(dim=-1)
         print("************local q and novelty************")
