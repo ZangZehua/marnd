@@ -49,6 +49,8 @@ class MarndAgent(nn.Module):
             nn.Dropout(p=0.5),
             nn.Linear(args.cur_hidden_dim, args.cur_output_dim)
         )
+        self.local_novelty_optimizer = torch.optim.Adam(self.local_novelty_predict.parameters(),
+                                                        self.args.local_novelty_lr)
 
         # local Q net
         # using for calculating the local Q
@@ -78,6 +80,10 @@ class MarndAgent(nn.Module):
 
         # local_novelty
         novelty = novelty_loss.mean(dim=-1)
+        print("************local q and novelty************")
+        print(local_q, local_q.shape)
+        print(novelty, novelty.shape)
+        print("******************************************")
         return local_q, h_out, novelty_loss, novelty
 
     def init_hidden(self):
