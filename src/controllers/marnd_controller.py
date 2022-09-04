@@ -34,6 +34,7 @@ class MarndMAC:
         """
         agent_inputs = self._build_inputs(ep_batch, t)
         agents_out, self.hidden_states, novelty_loss = self.agent(agent_inputs, self.hidden_states)
+        # agents_out, self.hidden_states, novelty_loss, novelty_reward = self.agent(agent_inputs, self.hidden_states)
 
         if train_mode:
             return agents_out, novelty_loss

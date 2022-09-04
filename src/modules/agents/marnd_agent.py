@@ -84,12 +84,35 @@ class MarndAgent(nn.Module):
 
         # a = Q_local_1 + Q_local_2
         agents_out = local_q + novelty_q
-        print("************local q and novelty************")
-        print(local_q, local_q.shape)
-        print(novelty_loss, novelty_loss.shape)
-        print(agents_out, agents_out.shape)
-        print("******************************************")
         return agents_out, h_out, novelty_loss
+
+    # def forward(self, x, hidden):
+    #     """
+    #             :param x: [batch_size * n_agents, input_dim]
+    #             :param hidden: [batch_size, n_agents, hidden_dim]
+    #             :return: local_q: [batch_size, 6, 30]
+    #                      h_out: [batch_size, 6, 30]
+    #
+    #             predict_novelty: [6, 32]
+    #             """
+    #     local_q = F.relu(self.q_fc1(x))
+    #     local_q = local_q.view(-1, local_q.size(-1))
+    #     h_in = hidden.view(-1, self.args.rnn_hidden_dim)
+    #     h_out = self.q_rnn(local_q, h_in)
+    #     local_q = self.q_fc2(h_out).unsqueeze(0)
+    #
+    #     target_novelty = self.local_novelty_target(x)
+    #     predict_novelty = self.local_novelty_predict(x)
+    #
+    #     # local_novelty_predict loss, update independently
+    #     novelty_loss = nn.functional.mse_loss(predict_novelty, target_novelty)
+    #
+    #     # local_novelty
+    #     novelty_reward = nn.functional.mse_loss(predict_novelty, target_novelty, reduction='none').mean(dim=1, keepdim=True)
+    #
+    #     # a = Q_local_1 + Q_local_2
+    #     agents_out = local_q
+    #     return agents_out, h_out, novelty_loss, novelty_reward
 
     def init_hidden(self):
         # trick, create hidden state on same device

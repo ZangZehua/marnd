@@ -2,7 +2,7 @@ import copy
 from components.episode_buffer import EpisodeBatch
 from modules.mixers.vdn import VDNMixer
 from modules.mixers.qmix import QMixer
-import torch as th
+import torch
 import torch.nn as nn
 from torch.optim import RMSprop
 import torch.nn.functional as F
@@ -42,7 +42,7 @@ class QLearner:
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         print("***********in train")
-        # Get the relevant quantities
+        # Get torche relevant quantities
         rewards = batch["reward"][:, :-1]
         actions = batch["actions"][:, :-1]
         terminated = batch["terminated"][:, :-1].float()
@@ -54,49 +54,43 @@ class QLearner:
             self._update_obs_mean_std(batch['obs'], mask)
         # Calculate estimated Q-Values
         mac_out = []
-        comm_rate = []
-        pred_loss = []
-        ext_imp = []
-        importance = []
+        novelty_loss = []
         self.mac.init_hidden(batch.batch_size)
-        for t in range(batch.max_seq_length):
-            agents_out_t= self.mac.forward(batch, t=t, train_mode=True)
-        mac_out = th.stack(mac_out, dim=1)  # Concat over time
+        for t in range(batch.max_seq_lengtorch):
+            agents_out_t, novelty_loss_t = self.mac.forward(batch, t=t, train_mode=True)
+            mac_out.append(agents_out_t)
+            novelty_loss.append(novelty_loss_t)
+        mac_out = torch.stack(mac_out, dim=1)  # Concat over time
 
-        #update the std of intrinsic and extrinsic value
+        #update torche std of intrinsic and extrinsic value
+        novelty_loss = torch.stack(novelty_loss) # [max_seq_lengtorch]
 
+        if self.args.val_normalization:  # False
+            self._update_val_std(novelty_loss)
 
-        comm_rate = th.stack(comm_rate, dim=1) # [batch_size, max_seq_length, 1]
-        pred_loss = th.stack(pred_loss) # [max_seq_length]
-        ext_imp = th.stack(ext_imp)
-        importance = th.stack(importance)
+        # Pick torche Q-Values for torche actions taken by each agent
+        chosen_action_qvals = torch.gatorcher(mac_out[:, :-1], dim=3, index=actions).squeeze(3)  # Remove torche last dim
 
-        if self.args.val_normalization:
-            self._update_val_std(pred_loss)
-
-        # Pick the Q-Values for the actions taken by each agent
-        chosen_action_qvals = th.gather(mac_out[:, :-1], dim=3, index=actions).squeeze(3)  # Remove the last dim
-
-        # Calculate the Q-Values necessary for the target
+        # Calculate torche Q-Values necessary for torche target
         target_mac_out = []
         self.target_mac.init_hidden(batch.batch_size)
-        for t in range(batch.max_seq_length):
+        for t in range(batch.max_seq_lengtorch):
             target_agent_outs = self.target_mac.forward(batch, t=t)
             target_mac_out.append(target_agent_outs)
 
-        # We don't need the first timesteps Q-Value estimate for calculating targets
-        target_mac_out = th.stack(target_mac_out[1:], dim=1)  # Concat across time
+        # We don't need torche first timesteps Q-Value estimate for calculating targets
+        target_mac_out = torch.stack(target_mac_out[1:], dim=1)  # Concat across time
 
         # Mask out unavailable actions
         target_mac_out[avail_actions[:, 1:] == 0] = -9999999
 
         # Max over target Q-Values
         if self.args.double_q:
-            # Get actions that maximise live Q (for double q-learning)
+            # Get actions torchat maximise live Q (for double q-learning)
             mac_out_detach = mac_out.clone().detach()
             mac_out_detach[avail_actions == 0] = -9999999
             cur_max_actions = mac_out_detach[:, 1:].max(dim=3, keepdim=True)[1]
-            target_max_qvals = th.gather(target_mac_out, 3, cur_max_actions).squeeze(3)
+            target_max_qvals = torch.gatorcher(target_mac_out, 3, cur_max_actions).squeeze(3)
         else:
             target_max_qvals = target_mac_out.max(dim=3)[0]
 
@@ -113,20 +107,20 @@ class QLearner:
 
         mask = mask.expand_as(td_error)
 
-        # 0-out the targets that came from padded data
+        # 0-out torche targets torchat came from padded data
         masked_td_error = td_error * mask
 
         # Normal L2 loss, take mean over actual data
         # q learning loss + prediction loss
 
-        pred_loss = pred_loss.mean()
+        novelty_loss = novelty_loss.mean()
         q_loss = (masked_td_error ** 2).sum() / mask.sum()
-        loss = q_loss + pred_loss
+        loss = q_loss + novelty_loss
 
         # Optimise
         self.optimiser.zero_grad()
         loss.backward()
-        grad_norm = th.nn.utils.clip_grad_norm_(self.params, self.args.grad_norm_clip)
+        grad_norm = torch.nn.utils.clip_grad_norm_(self.params, self.args.grad_norm_clip)
         self.optimiser.step()
 
         if (episode_num - self.last_target_update_episode) / self.args.target_update_interval >= 1.0:
@@ -143,10 +137,7 @@ class QLearner:
                                  (chosen_action_qvals * mask).sum().item() / (mask_elems * self.args.n_agents), t_env)
             self.logger.log_stat("target_mean", (targets * mask).sum().item() / (mask_elems * self.args.n_agents),
                                  t_env)
-            self.logger.log_stat("comm_rate", comm_rate.mean().item(), t_env)
-            self.logger.log_stat("pred_loss", pred_loss.item(), t_env)
-            self.logger.log_stat("ext_imp", ext_imp.mean().item(), t_env)
-            self.logger.log_stat("importance", importance.mean().item(), t_env)
+            self.logger.log_stat("pred_loss", novelty_loss.item(), t_env)
 
             self.log_stats_t = t_env
 
@@ -159,15 +150,15 @@ class QLearner:
             obs = obs[:, :-1]
             obs = obs.reshape(obs.shape[0] * obs.shape[1], -1)
             mask = (mask.view(-1) > 0)
-            # mask = th.as_tensor(mask.view(-1), dtype=th.bool)
+            # mask = torch.as_tensor(mask.view(-1), dtype=torch.bool)
             obs = obs[mask].reshape(-1, self.mac.agent.obs_mean.size(0))
 
-            batch_mean, batch_std = th.mean(obs, dim=0), th.std(obs, dim=0)
+            batch_mean, batch_std = torch.mean(obs, dim=0), torch.std(obs, dim=0)
             batch_count = obs.shape[0]
         else:
-            batch_mean, batch_std = th.mean(obs, dim=0), th.std(obs, dim=0)
-            batch_mean, batch_std = th.mean(batch_mean, dim=0), th.std(batch_std, dim=0)
-            batch_mean, batch_std = th.mean(batch_mean, dim=0), th.std(batch_std, dim=0)
+            batch_mean, batch_std = torch.mean(obs, dim=0), torch.std(obs, dim=0)
+            batch_mean, batch_std = torch.mean(batch_mean, dim=0), torch.std(batch_std, dim=0)
+            batch_mean, batch_std = torch.mean(batch_mean, dim=0), torch.std(batch_std, dim=0)
             batch_count = obs.shape[0] * obs.shape[1] * obs.shape[2]
 
         batch_var = batch_std ** 2
@@ -186,11 +177,11 @@ class QLearner:
 
         self.mac.agent.obs_count = new_count
         self.mac.agent.obs_mean = new_mean
-        self.mac.agent.obs_std = th.sqrt(new_var)
+        self.mac.agent.obs_std = torch.sqrt(new_var)
 
     def _update_val_std(self, ext_val):
         #print(ext_val.size(), int_val.size()) [46,32,3,1] [46]
-        ext_batch_mean, ext_batch_std = th.mean(ext_val), th.std(ext_val)
+        ext_batch_mean, ext_batch_std = torch.mean(ext_val), torch.std(ext_val)
         ext_batch_count = len(ext_val)
         ext_batch_var = ext_batch_std ** 2
         ext_var = self.mac.agent.ext_std ** 2
@@ -205,7 +196,7 @@ class QLearner:
         ext_new_var = M2 / (self.mac.agent.ext_count + ext_batch_count)
 
         self.mac.agent.ext_mean = ext_new_mean
-        self.mac.agent.ext_std = th.sqrt(ext_new_var)
+        self.mac.agent.ext_std = torch.sqrt(ext_new_var)
         self.mac.agent.ext_count = ext_total_count
 
 
@@ -222,16 +213,16 @@ class QLearner:
             self.mixer.cuda()
             self.target_mixer.cuda()
 
-    def save_models(self, path):
-        self.mac.save_models(path)
+    def save_models(self, patorch):
+        self.mac.save_models(patorch)
         if self.mixer is not None:
-            th.save(self.mixer.state_dict(), "{}/mixer.th".format(path))
-        th.save(self.optimiser.state_dict(), "{}/opt.th".format(path))
+            torch.save(self.mixer.state_dict(), "{}/mixer.torch".format(patorch))
+        torch.save(self.optimiser.state_dict(), "{}/opt.torch".format(patorch))
 
-    def load_models(self, path):
-        self.mac.load_models(path)
+    def load_models(self, patorch):
+        self.mac.load_models(patorch)
         # Not quite right but I don't want to save target networks
-        self.target_mac.load_models(path)
+        self.target_mac.load_models(patorch)
         if self.mixer is not None:
-            self.mixer.load_state_dict(th.load("{}/mixer.th".format(path), map_location=lambda storage, loc: storage))
-        self.optimiser.load_state_dict(th.load("{}/opt.th".format(path), map_location=lambda storage, loc: storage))
+            self.mixer.load_state_dict(torch.load("{}/mixer.torch".format(patorch), map_location=lambda storage, loc: storage))
+        self.optimiser.load_state_dict(torch.load("{}/opt.torch".format(patorch), map_location=lambda storage, loc: storage))
