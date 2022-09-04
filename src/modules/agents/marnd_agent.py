@@ -32,7 +32,7 @@ class MarndAgent(nn.Module):
         self.local_novelty_target = nn.Sequential(
             nn.Linear(input_dim, args.cur_hidden_dim),
             nn.ReLU(),
-            nn.Linear(args.cur_hidden_dim, args.cur_output_dim)
+            nn.Linear(args.cur_hidden_dim, args.n_actions)
         )
         for params in self.local_novelty_target.parameters():
             params.requires_grad = False
@@ -47,7 +47,7 @@ class MarndAgent(nn.Module):
             nn.Linear(args.cur_hidden_dim, args.cur_hidden_dim),
             nn.ReLU(),
             nn.Dropout(p=0.5),
-            nn.Linear(args.cur_hidden_dim, args.cur_output_dim)
+            nn.Linear(args.cur_hidden_dim, args.n_actions)
         )
         self.local_novelty_optimizer = torch.optim.Adam(self.local_novelty_predict.parameters(),
                                                         self.args.local_novelty_lr)
@@ -60,11 +60,12 @@ class MarndAgent(nn.Module):
 
     def forward(self, x, hidden):
         """
-
         :param x: [batch_size * n_agents, input_dim]
         :param hidden: [batch_size, n_agents, hidden_dim]
         :return: local_q: [batch_size, 6, 30]
                  h_out: [batch_size, 6, 30]
+
+        predict_novelty: [6, 32]
         """
         local_q = F.relu(self.q_fc1(x))
         local_q = local_q.view(-1, local_q.size(-1))
@@ -82,7 +83,7 @@ class MarndAgent(nn.Module):
         novelty = novelty_loss.mean(dim=-1)
         print("************local q and novelty************")
         print(local_q, local_q.shape)
-        print(predict_novelty, predict_novelty.shape)
+        print(novelty_loss, novelty_loss.shape)
         print("******************************************")
         return local_q, h_out, novelty_loss, novelty
 

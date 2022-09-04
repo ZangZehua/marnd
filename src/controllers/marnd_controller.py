@@ -40,15 +40,15 @@ class MarndMAC:
         else:
             return agents_out
 
-    def local_novelty(self, next_obs):
-        """
-        next_obs: FloatTensor, CUDA
-        local_novelty: C
-        """
-        target_next_feature = self.agent.local_novelty_target(next_obs)
-        predict_next_feature = self.agent.local_novelty_predict(next_obs)
-        local_novelty = (target_next_feature - predict_next_feature).pow(2).sum(1) / 2
-        return local_novelty
+    # def local_novelty(self, next_obs):
+    #     """
+    #     next_obs: FloatTensor, CUDA
+    #     local_novelty: C
+    #     """
+    #     target_next_feature = self.agent.local_novelty_target(next_obs)
+    #     predict_next_feature = self.agent.local_novelty_predict(next_obs)
+    #     local_novelty = (target_next_feature - predict_next_feature).pow(2).sum(1) / 2
+    #     return local_novelty
 
     def init_hidden(self, batch_size):
         self.hidden_states = self.agent.init_hidden().unsqueeze(0).expand(batch_size, self.n_agents, -1)  # bav
