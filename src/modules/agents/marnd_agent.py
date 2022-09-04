@@ -82,7 +82,7 @@ class MarndAgent(nn.Module):
         novelty = novelty_loss.mean(dim=-1)
         print("************local q and novelty************")
         print(local_q, local_q.shape)
-        print(novelty, novelty.shape)
+        print(predict_novelty, predict_novelty.shape)
         print("******************************************")
         return local_q, h_out, novelty_loss, novelty
 
