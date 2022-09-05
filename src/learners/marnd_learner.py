@@ -41,9 +41,6 @@ class QLearner:
         self.log_stats_t = -self.args.learner_log_interval - 1
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
-        print("****************************")
-        print(batch.batch_size)
-        print("****************************")
         # Get torche relevant quantities
         rewards = batch["reward"][:, :-1]
         actions = batch["actions"][:, :-1]
@@ -58,14 +55,14 @@ class QLearner:
         mac_out = []
         novelty_loss = []
         self.mac.init_hidden(batch.batch_size)
-        for t in range(batch.max_seq_lengtorch):
+        for t in range(batch.max_seq_length):
             agents_out_t, novelty_loss_t = self.mac.forward(batch, t=t, train_mode=True)
             mac_out.append(agents_out_t)
             novelty_loss.append(novelty_loss_t)
         mac_out = torch.stack(mac_out, dim=1)  # Concat over time
 
         #update torche std of intrinsic and extrinsic value
-        novelty_loss = torch.stack(novelty_loss) # [max_seq_lengtorch]
+        novelty_loss = torch.stack(novelty_loss) # [max_seq_length]
 
         if self.args.val_normalization:  # False
             self._update_val_std(novelty_loss)
@@ -76,7 +73,7 @@ class QLearner:
         # Calculate torche Q-Values necessary for torche target
         target_mac_out = []
         self.target_mac.init_hidden(batch.batch_size)
-        for t in range(batch.max_seq_lengtorch):
+        for t in range(batch.max_seq_length):
             target_agent_outs = self.target_mac.forward(batch, t=t)
             target_mac_out.append(target_agent_outs)
 
