@@ -41,7 +41,9 @@ class QLearner:
         self.log_stats_t = -self.args.learner_log_interval - 1
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
-        print("***********in train")
+        print("****************************")
+        print(batch.batch_size)
+        print("****************************")
         # Get torche relevant quantities
         rewards = batch["reward"][:, :-1]
         actions = batch["actions"][:, :-1]
